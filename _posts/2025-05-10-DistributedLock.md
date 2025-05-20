@@ -5,6 +5,7 @@ subtitle: 재고 감소 및 한정 수량 판매 시스템 같은 다양한 동�
 sidebar:
   nav: "docs"
 author: wooni
+image: https://github.com/user-attachments/assets/5941c0f1-0630-448e-bca3-d611f8512257
 categories: [spring]
 tags: [distributed lock, redisson, concurrency, spring]
 featured: true
