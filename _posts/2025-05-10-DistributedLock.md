@@ -7,7 +7,6 @@ sidebar:
 author: wooni
 categories: [spring]
 tags: [distributed lock, redisson, concurrency, spring]
-image: https://github.com/user-attachments/assets/5941c0f1-0630-448e-bca3-d611f8512257
 featured: true
 date: 2025-05-20
 hidden: false
