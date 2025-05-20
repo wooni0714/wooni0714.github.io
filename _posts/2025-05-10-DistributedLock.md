@@ -15,7 +15,7 @@ comments: true
 permalink: '/:categories/:title'
 ---
 
-## 1. 개요
+## 1. 프로젝트 개요
 - 재고감소 및 한정수량 판매 시스템같은 양한 동시성 제어 문제를 맞닥뜨리면서  Redisson DistributedLock(분산락)과 AOP을 활용하여 이와 같은 문제를 해결하고 이해하기 위해 다루었습니다.
 
 프로젝트 환경 및 사용기술
@@ -31,26 +31,35 @@ permalink: '/:categories/:title'
 - 또한 TTL, Watchdog 기능과 함께 AOP 기반 선언적 락 처리도 지원되어 복잡한 코드 수정 없이 Race Condition을 효과적으로 방지할 수 있습니다.
 
 ## 3. Redisson과 Lettuce
-
 ### Lettuce
-
 - Lettuce는 Redis 클라이언트로서, 분산락 기능이 내장되어 있지 않기 때문에 setnx, setex 등을 활용해 직접 락 구현을 해야 하며, 락 획득을 위해 Redis에 지속적으로 요청을 보내는 Spin Lock 방식을 사용하게 됩니다. 동시에 많은 스레드가 락을 기다릴 경우 Redis에 과도한 부하가 일어납니다.
-    <p align="center">
-  <img src="https://github.com/user-attachments/assets/e3850f8c-2521-4b2d-a9f9-49e33a2c97d4" width="500" height="500" />
-  </p>
-    1. Thread-1의 키가 1인 데이터를 redis에 set하면 맨 처음엔 1이 없으므로 성공.
-    2. Thread-2가 키가 1인 데이터를 redis에 set하면 1이 존재함으로 실패.
-    3. Thread-2는 성공을 하기 위해 100초마다 재시도 하는 로직을 만들어 성공할 때 까지 함.
+
+<div style="text-align: center;">
+  <img data-action="zoom" src='{{ "/assets/images/Lettuce.png" }}' alt="absolute" width="500" height="500" />
+</div>
+
+<div style= "font-size: 14px; margin-left: 25px;">
+  <ul style="list-style: none;">
+    <li>1. Thread-1의 키가 1인 데이터를 redis에 set하면 맨 처음엔 1이 없으므로 성공</li>
+    <li>2. Thread-2가 키가 1인 데이터를 redis에 set하면 1이 존재함으로 실패</li>
+    <li>3. Thread-2는 성공을 하기 위해 100초마다 재시도 하는 로직을 만들어 성공할 때 시도 함</li>
+  </ul>
+</div>
  
-  ### Redisson
+### Redisson
 
 - **Redisson은** pub-sub 방식으로  락이 해제되면 락을 subscribe 하고 있는 클라이언트에게 락이 해제되었다는 알림을 보내 락 획득을 시도하기에 Lettuce와 비교했을 때 Redis에 부하가 덜 갑니다.
 - `Lock interface` 지원하기 때문에 waitTime, leaseTime 등의 타임아웃 설정이 가능하고 내부적으로 Watchdog 기능도 제공하여 더 안정적이고 안전한 락 제어가 가능합니다.
-    
-    ![Image](https://github.com/user-attachments/assets/c99c123e-3000-409f-af29-b2115d52ed2f)
-  
-    1.  채널을 구독함으로 Thread-1의 Lock 사용종료를 채널에 알림
-    2.  Thread-2는 구독한 채널을 통해 Thread-1의 Lock 점유가 해제됨을 알고 Lock을 획득
+<div style="text-align: center;">
+<img data-action="zoom" src='{{ "/assets/images/redisson.png" }}' alt='absolute'> 
+</div>
+
+<div style= "font-size: 14px;">
+  <ul style="list-style: none; padding-left:0">
+    <li>1. 채널을 구독함으로 Thread-1의 Lock 사용종료를 채널에 알림</li>
+    <li>2. Thread-2는 구독한 채널을 통해 Thread-1의 Lock 점유가 해제됨을 알고 Lock을 획득</li>
+  </ul>
+</div>
 
 ## 4. AOP (Aspect-Oriented-Programming)
 
@@ -61,16 +70,16 @@ permalink: '/:categories/:title'
 
 ### AOP 동작과정
 
-<img width="1044" alt="Image" src="https://github.com/user-attachments/assets/30110fd9-22be-41f1-a558-eaacab15ee2f" />
+<img data-action="zoom" src='{{ "/assets/images/aop_flow.png" }}' alt='absolute'>
 
 ## 5. Redisson 적용
 
 1. DistributedLock 분산락 적용 다이어그램
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/2adf42d1-3c13-483c-a693-ba98e85f507a" width="500" height="800" />
-</p>
-흐름
+<div style="text-align: center;">
+  <img data-action="zoom" src='{{ "/assets/images/DistributedLock-diagram.png" }}' alt="absolute" width="500" height="800" />
+</div>
 
+흐름
 - 구매 요청이 들어오면, 분산락 어노테이션을 통해 해당 상품에 대한 락을 시도합니다.
 - 락 획득 성공 : 별도의 트랜잭션(@Transactional(REQUIRES_NEW)) 안에서 재고 수량을 검증하고 차감하는 로직이 실행됩니다.
 - 재고 차감이 성공적으로 완료되면, 트랜잭션이 커밋되고 이후 락이 해제됩니다.
@@ -78,7 +87,6 @@ permalink: '/:categories/:title'
 - 재시도 중에도 락 획득에 계속 실패하거나 재고 부족 등 비즈니스 예외가 발생하면 구매는 실패로 처리됩니다.
 
 AOP
-
 - AOP를 활용해 락의 획득과 해제 로직을 분리함으로써, 중복 코드를 제거하고 보일러플레이트 문제를 해결할 수 있습니다.
 - `@Around`,`@DistributedLock` 어노테이션을 사용해 락이 필요한 메서드를 선언적으로 지정하여 사용합니다.
 
@@ -363,63 +371,74 @@ class LimitedProductServiceTest {
 ```
 
 DistributedLock 적용 전
-
-![Image](https://github.com/user-attachments/assets/d6514a2a-4cf6-4d96-87e6-b2bae6b79cf2)
+<!-- <div style="text-align: center;">
+  <img data-action="zoom" src='{{ "/assets/images/DistributedLock-diagram.png" }}' alt="absolute" width="500" height="800" />
+</div> -->
+<img data-action="zoom" src='{{ "/assets/images/DistributedLock-before.png" }}' alt='absolute'>
 
 JMeter 테스트
 
-![Image](https://github.com/user-attachments/assets/68d2c619-9b1f-4e73-8703-6874eff98cbe)
+<img data-action="zoom" src='{{ "/assets/images/DistributedLock-before-db.png" }}' alt='absolute'>
 
 - 수량 100개 한정 상품 등록
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/30f06c07-fc66-4129-bf9f-ae34c9d4cbaf" width="560" height="600" />
-  <img src="https://github.com/user-attachments/assets/804e0ce2-e672-4de9-a020-b36ea494b3d5" width="350" height="200" />
-</p>
+
+
+  <div style="text-align: center;">
+    <img src='{{ "/assets/images/DistributedLock-before-jmeter.png" }}' alt="jmeter" style="width: 400px height: 500;" />
+    <p style="font-size: 14px;">JMeter 테스트 결과</p>
+  </div>
+
+  <div style="text-align: center;">
+    <img src='{{ "/assets/images/DistributedLock-before-db2.png" }}' alt="db2" style="width: 450px; height: auto;" />
+    <p style="font-size: 14px;">DB 상태</p>
+  </div>
+
+
 
 - DistributedLock 분산락을 적용하기 전에는 재고수량 100개에 대해 동시에 110개의 쓰레드 요청에 모두 성공처리 되었지만 실제로는 69개의 수량이 남아 중복 처리로 인한 동시성 문제가 발생했습니다.
 
 DistributedLock 적용 후
 
-<img src="https://github.com/user-attachments/assets/1045aee8-9967-4cd9-8120-efdb954f7f8c" width="350" height="100" />
+<img data-action="zoom" src='{{ "/assets/images/DistributedLock-after.png" }}' alt='absolute'>
 <br />
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/740a4181-87a4-4e9f-9408-54f447d7da41" width="560" height="600" />
-  <img src="https://github.com/user-attachments/assets/e3f37d09-7644-498c-a0be-dfe003cd90d7" width="350" height="200" />
-</p>
+  <div style="text-align: center;">
+    <img src='{{ "/assets/images/DistributedLock-after-jmeter.png" }}' alt="jmeter" style="width: 400px height: 500;" />
+    <p style="font-size: 14px;">JMeter 테스트 결과</p>
+  </div>
+
+  <div style="text-align: center;">
+    <img src='{{ "/assets/images/DistributedLock-after-db2.png" }}' alt="db2" style="width: 450px; height: auto;" />
+    <p style="font-size: 14px;">DB 상태</p>
+  </div>
 
 - DistributedLock 분산락을 적용한 후에는 재고수량 100개에 대해 110개의 쓰레드를 동시에 요청을 보낸 결과 100개만 락을 획득해 성공하였고 나머지 10개는 수량부족으로 락 획득을 실패하여 처리되지 않았으며 실제 재고 수량도 0개로 정확히 소진되어 동시성제어가 정상적으로 이루어졌습니다.
 
 ## **6. Issue**
-
 ### Transaction commit 이후 락이 해제되어야 하는 이유
 
-1. 락의 해제 시점이 트랜잭션 커밋 이전일 경우
+가. 락의 해제 시점이 트랜잭션 커밋 이전일 경우
 
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/1c52eb1c-b7ef-4904-95fc-70610ae1535a" width="560" height="700" />
-</p>
+<img data-action="zoom" src='{{ "/assets/images/issue-transaction-before.png" }}' alt='absolute'>
+<div style="font-size: 15px;">
+  1. 두 Client가 동시에 요청시 Client 1이 먼저 락을 획득하고 재고를 조회합니다. (재고 조회:100개)<br>
+  2. Client 1은 재고를 1개 차감한 후 트랜잭션 커밋 이전에 락을 먼저 해제합니다.(재고 99개)<br>
+  3. Client 2는 락이 해제됨을 감지하고 락을 획득하여 재고를 조회 합니다.(재고 조회:100개)<br>
+  4. Client 2는 재고 1개를 차감한 후 락을 해제하고 커밋합니다.<br><br>
 
-1. Client 1과 Client 2가 동시에 요청시 Client 1이 먼저 락을 획득하고 재고를 조회합니다. (재고 조회:100개)
-2. Client 1은 재고를 1개 차감한 후 트랜잭션 커밋 이전에 락을 먼저 해제합니다.(재고 99개)
-3. Client 2는 락이 해제됨을 감지하고 락을 획득하여 재고를 조회 합니다.(재고 조회:100개)
-4. Client 2는 재고 1개를 차감한 후 락을 해제하고 커밋합니다.
-
-— 두 Client 중 하나의 커밋이 다른 하나를 덮어씌우게 되어 실제로는 1개만 차감된 것처럼 정합성 문제가 발생합니다.
-
-2. 락의 해제 시점이 트랜잭션 커밋 이후일 경우
-
-<p align="center">
-  <img src="https://github.com/user-attachments/assets/9bc97331-4ce4-48df-9ce5-169d26a2c69f" width="560" height="700" />
-</p>
-
-1. Client 1과 Client 2가 동시에 요청시 Client 1이 먼저 락을 획득하고 재고를 조회합니다. (재고 조회:100개)
-2. Client 1은 재고를 차감한 후 트랜잭션 커밋을 하고 락을 해제합니다. (재고:99개)
-3. Client 2는 락이 해제되었다는 알림을 받고 락을 획득하여 재고를 조회 합니다.(재고 조회:99개)
-4. Client 2는 재고를 차감한 후  트랜잭션 커밋을 한 뒤 락을 해제 합니다. (재고:98개)
-
+  — 두 Client 중 하나의 커밋이 다른 하나를 덮어씌우게 되어 실제로는 1개만 차감된 것처럼 정합성 문제가 발생합니다.
+</div>
+<br>
+ 나. 락의 해제 시점이 트랜잭션 커밋 이후일 경우
+<img data-action="zoom" src='{{ "/assets/images/issue-transaction-after.png" }}' alt='absolute'>
+<div style="font-size: 15px;">
+1. 두 Client가 동시에 요청시 Client 1이 먼저 락을 획득하고 재고를 조회합니다. (재고 조회:100개)<br>
+2. Client 1은 재고를 차감한 후 트랜잭션 커밋을 하고 락을 해제합니다. (재고:99개)<br>
+3. Client 2는 락이 해제되었다는 알림을 받고 락을 획득하여 재고를 조회 합니다.(재고 조회:99개)<br>
+4. Client 2는 재고를 차감한 후  트랜잭션 커밋을 한 뒤 락을 해제 합니다. (재고:98개)<br>
+<br>
 — Client 1 과 Client 2는 락의 해제가 트랜잭션 커밋 이후에 이루어지기 때문에 직전 트랜잭션이 반영된 재고 값으로 데이터의 정합성이 보장됩니다.
-
+</div>
 ### 데이터 베이스  커넥션 풀 부족으로 인한 데드락
 
 AopTransactionAspect에서 `@Transactional(propagation = Propagation.REQUIRES_NEW`)는 새로운 트랜잭션을 생성하는데 DB커넥션이 또한 새로 생성됩니다. Thread 간에 커넥션을 선점하기 위한 Race Condition이 발생한 상태에서 커넥션 풀이 고갈되면 일부 쓰레드는 커넥션을 획득하지 못하고 대기하거나 트랜잭션 타임아웃 또는 데드락이 발생합니다.
