@@ -1,5 +1,5 @@
 ---
-layout: post
+layout: single
 title: DistributedLock을 사용한 동시성 제어 해결
 subtitle: 재고 감소 및 한정 수량 판매 시스템 같은 다양한 동시성 제어 문제를 맞닥뜨리면서 Redisson DistributedLock(분산락)과 AOP을 활용하여 이를 해결
 sidebar:
